@@ -32,7 +32,7 @@
         "messages": {
           "values": [
             {
-              "content": "=Clasificá el siguiente mensaje como: PEDIDO, CONSULTA o OTRO.\n\nMensaje: \"{{ $json.text }}\""
+              "content": "=Clasificá el siguiente mensaje como PEDIDO, CONSULTA u OTRO. Respondé solo con una de esas palabras.\n\nMensaje: \"{{ $json.text }}\""
             }
           ]
         }

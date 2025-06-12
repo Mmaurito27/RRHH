@@ -57,6 +57,15 @@ const addToMemory = (id, direction, content, timestamp) => {
   saveMemory(memory);
 };
 
+// Valida que una cadena no esté vacía ni sea "undefined"
+const isValidString = (str) => {
+  return (
+    typeof str === 'string' &&
+    str.trim() !== '' &&
+    str !== 'undefined'
+  );
+};
+
 
 console.log("🚀 Webhook configurado en:", process.env.N8N_WEBHOOK_URL);
 if (!process.env.N8N_WEBHOOK_URL) {
@@ -120,7 +129,9 @@ const logInteraction = async (entry) => {
 
 // 🧠 Utilidad para asegurar formato correcto del número
 const normalizeWid = (numero) => {
-  return numero.includes('@') ? numero : `${numero}@c.us`;
+  if (!numero) return '';
+  const clean = String(numero).trim();
+  return clean.includes('@') ? clean : `${clean}@c.us`;
 };
 
 client.on('qr', qr => {
@@ -174,7 +185,7 @@ client.on('message', async (msg) => {
     // Si contiene media, procesar solo media (no duplicar con texto)
     if (msg.hasMedia) {
       const media = await msg.downloadMedia();
-        if (media && esCV(media.mimetype)) {
+        if (media && esCV(media.mimetype) && isValidString(media.data)) {
           const payload = {
             ...baseData,
             filename: `cv_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}.${media.mimetype.split('/')[1]}`,
@@ -205,11 +216,11 @@ client.on('message', async (msg) => {
         });
         addToMemory(baseData.desde, 'incoming', `[archivo] ${media.mimetype}`, baseData.timestamp);
         }
-      } else if (msg.body) {
+      } else if (isValidString(msg.body)) {
       // Solo texto (sin media)
         const textPayload = {
           ...baseData,
-          message: msg.body
+          message: msg.body.trim()
         };
 
         await axios.post(process.env.N8N_WEBHOOK_URL, textPayload);
@@ -218,11 +229,13 @@ client.on('message', async (msg) => {
           sender: senderName,
           timestamp: baseData.timestamp,
           tipo: 'texto',
-          mensaje: msg.body,
+          mensaje: msg.body.trim(),
         });
-        addToMemory(baseData.desde, 'incoming', msg.body, baseData.timestamp);
+        addToMemory(baseData.desde, 'incoming', msg.body.trim(), baseData.timestamp);
         console.log("📡 Enviando texto a:", process.env.N8N_WEBHOOK_URL);
-        console.log(`📝 Texto enviado desde ${senderName}: ${msg.body}`);
+        console.log(`📝 Texto enviado desde ${senderName}: ${msg.body.trim()}`);
+      } else {
+        console.warn(`⚠️ Mensaje vacío recibido de ${senderName}, se ignora.`);
       }
   } catch (err) {
     console.error('❌ Error al procesar mensaje:', err.message);
@@ -234,7 +247,7 @@ app.post('/webhook', async (req, res) => {
   const { body } = req;
   console.log('🔔 Mensaje recibido:', body);
 
-  if (!body || !body.from || !body.body) {
+  if (!body || !isValidString(body.from) || !isValidString(body.body)) {
     return res.status(400).json({ error: 'Mensaje inválido' });
   }
 
@@ -252,7 +265,7 @@ try {
       desde: normalizeWid(body.from),
       sender: senderName,
       timestamp: Math.floor(Date.now() / 1000),
-      message: body.body
+      message: body.body.trim()
     };
 
     await axios.post(process.env.N8N_WEBHOOK_URL, payload);
@@ -281,13 +294,13 @@ app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   console.log('🔔 Solicitud de envío de mensaje:', { to, text });
 
-  if (!to || typeof to !== 'string' || to.trim() === '' || to === 'undefined' || !to.endsWith('@c.us')) {
+  if (!isValidString(to) || !to.endsWith('@c.us')) {
     console.error('❌ Número inválido (to):', to);
     return res.status(400).json({ error: 'Número inválido. Debe terminar en @c.us' });
   }
-  const numeroDestino = to;
+  const numeroDestino = to.trim();
 
-  if (!text || typeof text !== 'string' || text.trim() === '') {
+  if (!isValidString(text)) {
     console.error('❌ Texto inválido:', text);
     return res.status(400).json({ error: 'Texto inválido. No puede estar vacío.' });
   }
@@ -299,9 +312,9 @@ app.post('/send-message', async (req, res) => {
       return res.status(404).json({ error: `El número ${numeroDestino} no está en WhatsApp o nunca inició chat.` });
     }
 
-    await client.sendMessage(numberId._serialized, text);
-    console.log(`📩 Mensaje enviado a ${numeroDestino}: ${text}`);
-    addToMemory(numeroDestino, 'outgoing', text, new Date().toISOString());
+    await client.sendMessage(numberId._serialized, text.trim());
+    console.log(`📩 Mensaje enviado a ${numeroDestino}: ${text.trim()}`);
+    addToMemory(numeroDestino, 'outgoing', text.trim(), new Date().toISOString());
     res.json({ success: true });
   } catch (err) {
     console.error(`❌ Error al enviar mensaje a ${numeroDestino}:`, err.message);

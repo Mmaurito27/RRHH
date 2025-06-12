@@ -60,3 +60,9 @@ El archivo `index.js` envía al webhook un JSON con las siguientes propiedades c
 ```
 
 Si el mensaje incluye un CV en lugar de `message` se envían `filename`, `mimetype` y `data_base64` con el archivo en base64.
+
+## Validaciones mejoradas
+
+Se añadieron controles para que ningún dato vacío llegue al workflow de n8n.
+Tanto los números de WhatsApp como los textos se validan y recortan antes de
+procesarlos, lo que evita fallos y mejora la interacción.
