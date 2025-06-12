@@ -1,6 +1,7 @@
 # RRHH WhatsApp Bot
 
 Servicio Node.js para recibir mensajes desde WhatsApp Web y reenviarlos a un workflow de n8n. El flujo en n8n clasifica los mensajes, utiliza OpenAI para generar respuestas y vuelve a enviar la contestación por WhatsApp.
+También detecta archivos adjuntos de CV en formato PDF o Word y los reenvía al flujo para su procesamiento.
 
 ## Requisitos
 - Node.js 18+
@@ -20,9 +21,17 @@ node index.js
 ```
 3. Escaneá el código QR que aparecerá en consola para vincular WhatsApp Web.
 4. Asegurate de que n8n tenga un webhook público accesible en `N8N_WEBHOOK_URL`.
+5. Si configurás `INIT_PHONE` en `.env`, el bot enviará un mensaje de bienvenida a ese número cuando la sesión se inicie.
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
+
+## Memoria persistente
+
+El bot guarda un historial de cada conversación en el archivo `memory.json`.
+Cada entrada incluye si el mensaje fue entrante o saliente, el contenido y la
+marca de tiempo. Esto permite conservar el contexto aunque el proceso se
+reinicie.
 
 ## Recomendaciones para n8n
 

@@ -34,6 +34,28 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
+const fs = require('fs');
+const path = require('path');
+
+// 📂 Memoria persistente de conversaciones
+const memoryFile = path.join(__dirname, 'memory.json');
+const loadMemory = () => {
+  try {
+    return JSON.parse(fs.readFileSync(memoryFile, 'utf8'));
+  } catch {
+    return {};
+  }
+};
+const saveMemory = (data) => {
+  fs.writeFileSync(memoryFile, JSON.stringify(data, null, 2));
+};
+const memory = loadMemory();
+
+const addToMemory = (id, direction, content, timestamp) => {
+  if (!memory[id]) memory[id] = [];
+  memory[id].push({ direction, content, timestamp });
+  saveMemory(memory);
+};
 
 
 console.log("🚀 Webhook configurado en:", process.env.N8N_WEBHOOK_URL);
@@ -105,8 +127,20 @@ client.on('qr', qr => {
   qrcode.generate(qr, { small: true });
 });
 
-client.on('ready', () => {
+client.on('ready', async () => {
   console.log('✅ Cliente WhatsApp conectado!');
+  if (process.env.INIT_PHONE) {
+    const dest = normalizeWid(process.env.INIT_PHONE);
+    try {
+      const numberId = await client.getNumberId(dest);
+      if (numberId) {
+        await client.sendMessage(numberId._serialized, '🤖 Bot conectado y listo!');
+        addToMemory(dest, 'outgoing', 'Bot conectado y listo!', new Date().toISOString());
+      }
+    } catch (err) {
+      console.error('❌ Error al enviar mensaje inicial:', err.message);
+    }
+  }
 });
 
 
@@ -140,25 +174,26 @@ client.on('message', async (msg) => {
     // Si contiene media, procesar solo media (no duplicar con texto)
     if (msg.hasMedia) {
       const media = await msg.downloadMedia();
-      if (media && esCV(media.mimetype)) {
-        const payload = {
-          ...baseData,
-          filename: `cv_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}.${media.mimetype.split('/')[1]}`,
-          mimetype: media.mimetype,
-          data_base64: media.data
-        };
+        if (media && esCV(media.mimetype)) {
+          const payload = {
+            ...baseData,
+            filename: `cv_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}.${media.mimetype.split('/')[1]}`,
+            mimetype: media.mimetype,
+            data_base64: media.data
+          };
 
-        await axios.post(process.env.N8N_WEBHOOK_URL, payload);
-        await logInteraction({
-          desde: baseData.desde,
-          sender: senderName,
-          timestamp: baseData.timestamp,
-          tipo: 'cv',
-          mensaje: `Archivo recibido: ${payload.filename}`,
-        });
-        console.log("📡 Enviando CV a:", process.env.N8N_WEBHOOK_URL);
-        console.log(`📎 CV recibido de ${senderName}: ${payload.filename}`);
-      } else if (media) {
+          await axios.post(process.env.N8N_WEBHOOK_URL, payload);
+          await logInteraction({
+            desde: baseData.desde,
+            sender: senderName,
+            timestamp: baseData.timestamp,
+            tipo: 'cv',
+            mensaje: `Archivo recibido: ${payload.filename}`,
+          });
+          addToMemory(baseData.desde, 'incoming', `[CV] ${payload.filename}`, baseData.timestamp);
+          console.log("📡 Enviando CV a:", process.env.N8N_WEBHOOK_URL);
+          console.log(`📎 CV recibido de ${senderName}: ${payload.filename}`);
+        } else if (media) {
         // Media recibida pero no es CV
         console.log(`📁 Media recibida de ${senderName} (${media.mimetype}), no es CV. No se envía al webhook.`);
         await logInteraction({
@@ -168,25 +203,27 @@ client.on('message', async (msg) => {
           tipo: 'media_no_cv',
           mensaje: `Archivo recibido (no CV): ${media.mimetype}`,
         });
-      }
-    } else if (msg.body) {
+        addToMemory(baseData.desde, 'incoming', `[archivo] ${media.mimetype}`, baseData.timestamp);
+        }
+      } else if (msg.body) {
       // Solo texto (sin media)
-      const textPayload = {
-        ...baseData,
-        message: msg.body
-      };
+        const textPayload = {
+          ...baseData,
+          message: msg.body
+        };
 
-      await axios.post(process.env.N8N_WEBHOOK_URL, textPayload);
-      await logInteraction({
-        desde: baseData.desde,
-        sender: senderName,
-        timestamp: baseData.timestamp,
-        tipo: 'texto',
-        mensaje: msg.body,
-      });
-      console.log("📡 Enviando texto a:", process.env.N8N_WEBHOOK_URL);
-      console.log(`📝 Texto enviado desde ${senderName}: ${msg.body}`);
-    }
+        await axios.post(process.env.N8N_WEBHOOK_URL, textPayload);
+        await logInteraction({
+          desde: baseData.desde,
+          sender: senderName,
+          timestamp: baseData.timestamp,
+          tipo: 'texto',
+          mensaje: msg.body,
+        });
+        addToMemory(baseData.desde, 'incoming', msg.body, baseData.timestamp);
+        console.log("📡 Enviando texto a:", process.env.N8N_WEBHOOK_URL);
+        console.log(`📝 Texto enviado desde ${senderName}: ${msg.body}`);
+      }
   } catch (err) {
     console.error('❌ Error al procesar mensaje:', err.message);
     console.log("⚠️ Dump completo:", err);
@@ -264,6 +301,7 @@ app.post('/send-message', async (req, res) => {
 
     await client.sendMessage(numberId._serialized, text);
     console.log(`📩 Mensaje enviado a ${numeroDestino}: ${text}`);
+    addToMemory(numeroDestino, 'outgoing', text, new Date().toISOString());
     res.json({ success: true });
   } catch (err) {
     console.error(`❌ Error al enviar mensaje a ${numeroDestino}:`, err.message);
