@@ -23,11 +23,3 @@ node index.js
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
-
-## Notas sobre el flujo en n8n
-- El nodo **Registrar Texto** debe conservar los campos originales usando `...$json` para que etapas posteriores reciban `desde` y `sender`.
-- En **Edit Fields** activá `includeOtherFields` y asigná `sessionId` con `$json.desde`.
-- **Edit Fields1** construye `to` validando que termine en `@c.us`.
-
-## Seguridad
-El endpoint `/send-message` valida el header `Authorization` contra `AUTH_TOKEN` antes de permitir el envío de mensajes.
