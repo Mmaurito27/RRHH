@@ -244,11 +244,11 @@ app.post('/send-message', async (req, res) => {
   const { to, text } = req.body;
   console.log('🔔 Solicitud de envío de mensaje:', { to, text });
 
-  if (!to || typeof to !== 'string') {
+  if (!to || typeof to !== 'string' || to.trim() === '' || to === 'undefined' || !to.endsWith('@c.us')) {
     console.error('❌ Número inválido (to):', to);
-    return res.status(400).json({ error: 'Número inválido.' });
+    return res.status(400).json({ error: 'Número inválido. Debe terminar en @c.us' });
   }
-  const numeroDestino = to.endsWith('@c.us') ? to : `${to}@c.us`;
+  const numeroDestino = to;
 
   if (!text || typeof text !== 'string' || text.trim() === '') {
     console.error('❌ Texto inválido:', text);
