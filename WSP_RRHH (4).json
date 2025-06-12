@@ -53,7 +53,7 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{ json: { mensaje: `📨 Texto de ${$json.sender}`, contenido: $json.message } }];"
+        "functionCode": "return [{ json: { ...$json, mensaje: `📨 Texto de ${$json.sender}`, contenido: $json.message } }];"
       },
       "name": "Registrar Texto",
       "type": "n8n-nodes-base.function",
@@ -161,7 +161,8 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"sessionId\": \"={{ $json.desde }}\"\n}",
+        "jsonOutput": "={\"sessionId\": $json.desde }",
+        "includeOtherFields": true,
         "options": {}
       },
       "type": "n8n-nodes-base.set",

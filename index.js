@@ -4,6 +4,7 @@ const qrcode = require('qrcode-terminal');
 const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require('axios');
+const { GoogleSpreadsheet } = require('google-spreadsheet');
 
 console.log("🚀 Webhook configurado en:", process.env.N8N_WEBHOOK_URL);
 
@@ -14,6 +15,39 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: { headless: false }
 });
+
+let sheet;
+const initSheet = async () => {
+  const { GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_SHEET_ID } = process.env;
+  if (!GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_SHEET_ID) {
+    console.warn('⚠️ Google Sheets no configurado. Se omitirá el registro.');
+    return;
+  }
+  try {
+    const doc = new GoogleSpreadsheet(GOOGLE_SHEET_ID);
+    await doc.useServiceAccountAuth({
+      client_email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    });
+    await doc.loadInfo();
+    sheet = doc.sheetsByIndex[0];
+    console.log(`📊 Conectado a Google Sheets: ${doc.title}`);
+  } catch (err) {
+    console.error('❌ No se pudo inicializar Google Sheets:', err.message);
+  }
+};
+
+initSheet();
+
+const logInteraction = async (entry) => {
+  if (!sheet) return;
+  try {
+    await sheet.addRow(entry);
+    console.log('📝 Interacción registrada en Google Sheets');
+  } catch (err) {
+    console.error('❌ Error al registrar en Google Sheets:', err.message);
+  }
+};
 
 // 🧠 Utilidad para asegurar formato correcto del número
 const normalizeWid = (numero) => {
@@ -66,6 +100,13 @@ client.on('message', async (msg) => {
         };
 
         await axios.post(process.env.N8N_WEBHOOK_URL, payload);
+        await logInteraction({
+          desde: baseData.desde,
+          sender: senderName,
+          timestamp: new Date(msg.timestamp * 1000).toISOString(),
+          tipo: 'cv',
+          archivo: payload.filename,
+        });
         console.log("📡 Enviando CV a:", process.env.N8N_WEBHOOK_URL);
         console.log(`📎 CV detectado y enviado desde ${senderName}`);
         return;
@@ -80,6 +121,13 @@ client.on('message', async (msg) => {
       };
 
       await axios.post(process.env.N8N_WEBHOOK_URL, textPayload);
+      await logInteraction({
+        desde: baseData.desde,
+        sender: senderName,
+        timestamp: new Date(msg.timestamp * 1000).toISOString(),
+        tipo: 'texto',
+        mensaje: msg.body,
+      });
       console.log("📡 Enviando texto a:", process.env.N8N_WEBHOOK_URL);
       console.log(`📝 Texto enviado desde ${senderName}: ${msg.body}`);
     }
