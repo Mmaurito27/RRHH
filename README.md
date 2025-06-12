@@ -23,3 +23,16 @@ node index.js
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
+
+## Recomendaciones para n8n
+
+El endpoint `/send-message` validará que el campo `to` termine en `@c.us`. Si el número es inválido o está vacío, la API devolverá **400 Bad Request** antes de contactar a WhatsApp.
+
+Para evitar errores, asegurate de armar el JSON del HTTP Request en n8n así:
+
+```json
+{
+  "to": "{{ $json.to || $json.sessionId }}",
+  "text": "{{ $json.text }}"
+}
+```
