@@ -36,3 +36,18 @@ Para evitar errores, asegurate de armar el JSON del HTTP Request en n8n así:
   "text": "{{ $json.text }}"
 }
 ```
+
+## Estructura del payload enviado a n8n
+
+El archivo `index.js` envía al webhook un JSON con las siguientes propiedades cuando recibe un mensaje de texto:
+
+```json
+{
+  "desde": "1234567890@c.us",
+  "sender": "Nombre del remitente",
+  "timestamp": "2024-05-01T12:00:00.000Z",
+  "message": "Contenido del mensaje"
+}
+```
+
+Si el mensaje incluye un CV en lugar de `message` se envían `filename`, `mimetype` y `data_base64` con el archivo en base64.
