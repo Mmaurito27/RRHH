@@ -23,6 +23,3 @@ node index.js
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
-
-## Seguridad
-El endpoint `/send-message` valida el header `Authorization` contra `AUTH_TOKEN` antes de permitir el envío de mensajes.
