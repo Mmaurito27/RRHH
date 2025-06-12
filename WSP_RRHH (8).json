@@ -96,7 +96,7 @@
       "parameters": {
         "promptType": "define",
         "text": "=Sos un asistente de recursos humanos que responde candidatos por WhatsApp. Respondé de forma profesional, clara y breve.\n\n⚠️ Tu única salida debe ser un JSON con las siguientes claves:\n\n📄 Contenido del CV (si lo hay):\n{{ $json.cv_text || \"Sin CV recibido.\" }}\n\n📌 Reglas del equipo RRHH:\n{{ $json.reglas || \"No hay reglas definidas en este momento.\" }}\n\n⏳ Mensaje recibido:\n{{ $json.message || \"No se recibió un mensaje de texto. Solo se procesó un archivo adjunto.\" }}\n\n👉 Respondé solo con el siguiente JSON:\n\n👉 Respondé solo con este JSON:\n\n{\n  \"respuesta\": \"Tu mensaje aquí\",\n  \"tipo\": \"saludo | cv | consulta | seguimiento | otro\",\n  \"to\": \"{{ $json.to }}\"\n}\n",
-        "hasOutputParser": true,
+        "hasOutputParser": false,
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -148,20 +148,6 @@
     },
     {
       "parameters": {
-        "schemaType": "manual",
-        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"respuesta\": { \"type\": \"string\" },\n    \"tipo\": {\n      \"type\": \"string\",\n      \"enum\": [\"saludo\", \"cv\", \"consulta\", \"seguimiento\", \"otro\"]\n    },\n    \"to\": { \"type\": \"string\" }\n  },\n  \"required\": [\"respuesta\", \"tipo\", \"to\"]\n}"
-      },
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.2,
-      "position": [
-        680,
-        420
-      ],
-      "id": "8bd98880-fe7a-4d19-b20a-d83a2d9b2edd",
-      "name": "Structured Output Parser"
-    },
-    {
-      "parameters": {
         "mode": "raw",
         "jsonOutput": "={\n  \"sessionId\": \"{{ $json.desde }}\",\n  \"desde\": \"{{ $json.desde }}\",\n  \"to\": \"{{ $json.desde.endsWith('@c.us') ? $json.desde : $json.desde + '@c.us' }}\"\n}\n",
         "includeOtherFields": true,
@@ -179,7 +165,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"to\": \"{{ $json.to || $json.output.to || $json.sessionId }}\",\n  \"text\": \"{{ $json.output.respuesta }}\"\n}\n",
+        "jsonOutput": "={\n  \"to\": \"{{ $json.to || $json.sessionId }}\",\n  \"text\": \"{{ $json.respuesta }}\"\n}\n",
         "includeOtherFields": true,
         "options": {}
       },
@@ -191,6 +177,19 @@
       ],
       "id": "cbb32068-e470-482b-b545-7671a33dce14",
       "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "functionCode": "let content=$json.output??$json.message??$json.text??;let parsed;try{parsed=typeof content===\"string\"?JSON.parse(content):content;}catch{parsed={};}return [{json:{...$json,...parsed}}];"
+      },
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        620,
+        180
+      ],
+      "id": "215958f3-3085-4eb7-9b5d-2979b9b81cf1"
     }
   ],
   "pinData": {
@@ -284,22 +283,11 @@
         ]
       ]
     },
-    "Structured Output Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "AI Agent": {
       "main": [
         [
           {
-            "node": "Edit Fields1",
+            "node": "Parse JSON",
             "type": "main",
             "index": 0
           }
@@ -322,6 +310,17 @@
         [
           {
             "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
             "type": "main",
             "index": 0
           }
