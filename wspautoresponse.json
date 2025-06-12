@@ -1,0 +1,136 @@
+{
+  "name": "AI WhatsApp Auto Response",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-in",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $json;\nreturn [{\n  group: msg.groupId,\n  sender: msg.sender,\n  text: msg.message,\n  timestamp: msg.timestamp\n}];"
+      },
+      "id": "parse-node",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Clasificá el siguiente mensaje como: PEDIDO, CONSULTA o OTRO.\n\nMensaje: \"{{ $json.text }}\""
+            }
+          ]
+        }
+      },
+      "id": "openai-node",
+      "name": "OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [700, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message }}",
+              "operation": "equal",
+              "value2": "PEDIDO"
+            },
+            {
+              "value1": "={{ $json.message }}",
+              "operation": "equal",
+              "value2": "CONSULTA"
+            }
+          ]
+        }
+      },
+      "id": "switch-node",
+      "name": "Clasificador IA",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"group\": \"{{ $node[\"Parse Message\"].json[\"group\"] }}\",\n  \"text\": \"Recibimos tu pedido 👌\"\n}"
+      },
+      "id": "pedido-node",
+      "name": "Responder PEDIDO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"group\": \"{{ $node[\"Parse Message\"].json[\"group\"] }}\",\n  \"text\": \"Gracias por tu consulta, responderemos en breve 🙌\"\n}"
+      },
+      "id": "consulta-node",
+      "name": "Responder CONSULTA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"group\": \"{{ $node[\"Parse Message\"].json[\"group\"] }}\",\n  \"text\": \"Gracias por tu mensaje 🧠. Lo recibimos correctamente.\"\n}"
+      },
+      "id": "otro-node",
+      "name": "Responder OTRO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1100, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Parse Message", "type": "main", "index": 0 }]]
+    },
+    "Parse Message": {
+      "main": [[{ "node": "OpenAI", "type": "main", "index": 0 }]]
+    },
+    "OpenAI": {
+      "main": [[{ "node": "Clasificador IA", "type": "main", "index": 0 }]]
+    },
+    "Clasificador IA": {
+      "main": [
+        [{ "node": "Responder PEDIDO", "type": "main", "index": 0 }],
+        [{ "node": "Responder CONSULTA", "type": "main", "index": 0 }],
+        [{ "node": "Responder OTRO", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
