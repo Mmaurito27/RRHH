@@ -53,7 +53,7 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{ json: { mensaje: `📨 Texto de ${$json.sender}`, contenido: $json.message } }];"
+        "functionCode": "return [{ json: { mensaje: `📨 Texto de ${$json.sender}`, contenido: $json.message, desde: $json.from, sender: $json.sender, timestamp: $json.timestamp } }];"
       },
       "name": "Registrar Texto",
       "type": "n8n-nodes-base.function",
@@ -182,7 +182,7 @@
     },
     {
       "parameters": {
-        "functionCode": "let content=$json.output??$json.message??$json.text??;let parsed;try{parsed=typeof content===\"string\"?JSON.parse(content):content;}catch{parsed={};}return [{json:{...$json,...parsed}}];"
+        "functionCode": "let content = $json.output ?? $json.message ?? $json.text;\nlet parsed;\ntry {\n  parsed = typeof content === 'string' ? JSON.parse(content) : content;\n} catch {\n  parsed = {};\n}\nreturn [{ json: { ...$json, ...parsed } }];"
       },
       "name": "Parse JSON",
       "type": "n8n-nodes-base.function",
