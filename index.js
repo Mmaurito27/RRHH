@@ -278,8 +278,7 @@ app.get('/status', (req, res) => {
   } else {
     res.json({ status: 'desconectado' });
   }
-}
-);
+});
 
 
 app.listen(process.env.PORT || 3000, () => {
