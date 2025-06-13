@@ -1,0 +1,347 @@
+{
+  "name": "WSP RRHH",
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "const buffer = Buffer.from($json.data_base64, 'base64');\n\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName: `${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json\n  }\n}];"
+      },
+      "id": "6a5fee0a-b673-4902-8baf-f2b08d421752",
+      "name": "Guardar CV Local",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1460,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3001/parse-pdf",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"base64\": \"{{ $json.base64 }}\",\n  \"filename\": \"{{ $binary.data.fileName }}\"}",
+        "headerParametersJson": "=",
+        "queryParametersJson": "="
+      },
+      "id": "3dde06e0-8412-421c-bc06-6fb50aea2421",
+      "name": "Extraer Texto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1100,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  item.json.cv_text = item.json.text;\n  return item;\n});"
+      },
+      "id": "2ebde80b-e89c-44b9-a6b2-ae5c28a74b5f",
+      "name": "Mapear Texto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isPDF }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ebdf4b1b-e103-4d97-897e-acd6553ccba4",
+      "name": "¿Es PDF?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        1020
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "d753e12c-9674-4f23-bfbe-7ca1992892da",
+      "name": "Responder Error1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1460,
+        1340
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const buffer = Buffer.from($json.data_base64, 'base64');\n\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName: $json.filename || 'cv.pdf',\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json\n  }\n}];"
+      },
+      "id": "790ff05f-53fe-491d-bacc-e0a0c8fd58f3",
+      "name": "Guardar PDF1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1420,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente CV en texto plano: {{ $json.cv_text }}\nGenera un resumen con nombre, experiencia laboral, formacion academica, habilidades tecnicas, idiomas, clasificacion (junior/senior/tecnico/pasante) y keywords."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2fe6f7e-f4d1-4a20-947f-9b32591cba85",
+      "name": "Analizar CV1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -820,
+        1060
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "i90V6bSWkyq3eGpZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/send-message",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "993be616-2d2a-4024-b340-f9b44b979642",
+      "name": "Responder Analisis1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst path = `/files/cv/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.json`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(path, JSON.stringify($json.message, null, 2));\nreturn [item];"
+      },
+      "id": "ca590383-5f5a-48c8-8ccc-8c3f43768f47",
+      "name": "Guardar Resumen1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-in",
+        "options": {}
+      },
+      "id": "c14ad944-6b7b-408c-810a-1fb57d4bbfee",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2080,
+        1020
+      ],
+      "webhookId": "e0b3341c-572b-4e82-b7ea-b91bbb60b502"
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $json;\nconst item = {\n  desde: msg.desde,\n  sender: msg.sender,\n  timestamp: msg.timestamp,\n};\nif (msg.filename && msg.mimetype) {\n  item.filename = msg.filename;\n  item.mimetype = msg.mimetype;\n  item.data_base64 = msg.data_base64;\n  item.isPDF = msg.mimetype === 'application/pdf';\n} else {\n  item.isPDF = false;\n}\nreturn [item];"
+      },
+      "id": "6679f132-3dad-4476-889b-aaa038432b22",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1880,
+        1020
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const buffer = item.binary?.data?.data;\n  if (!buffer) {\n    throw new Error(\"No se encontró el archivo binario.\");\n  }\n\n  item.json.base64 = Buffer.from(buffer).toString('base64');\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1260,
+        1060
+      ],
+      "id": "077b4931-8170-4ad7-a197-beeb6c63149f",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "desde": "5491122334455@c.us",
+          "sender": "Lucía Martínez",
+          "timestamp": "2025-06-13T10:15:00.000Z",
+          "filename": "lucia-martinez-cv.pdf",
+          "mimetype": "application/pdf",
+          "data_base64": "JVBERi0xLjMKMyAwIG9iago8PC9UeXBlIC9QYWdlCi9QYXJlbnQgMSAwIFIKL1Jlc291cmNlcyAyIDAgUgovQ29udGVudHMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9GaWx0ZXIgL0ZsYXRlRGVjb2RlIC9MZW5ndGggMTUyPj4Kc3RyZWFtCnicZc29CsIwGEbhvVfxjrrEpLWGdhQqVtRBcgOxfkrEJJK0KN6xQ+/BPxzE9cDDSbFIOMslLslUYTQTECnjHGqPSr1SJpgoIIucSQm1w2Dt7TZQiWXX9BorHdre0W0IdfwVE8nG6VtU1zMFQ64xusSGmi5EHzHvrHY+/sOsYPyzqnfGWx1L1O5wukcY11Kw9Kxf9QAeDzaMCmVuZHN0cmVhbQplbmRvYmoKMSAwIG9iago8PC9UeXBlIC9QYWdlcwovS2lkcyBbMyAwIFIgXQovQ291bnQgMQovTWVkaWFCb3ggWzAgMCA1OTUuMjggODQxLjg5XQo+PgplbmRvYmoKNSAwIG9iago8PC9UeXBlIC9Gb250Ci9CYXNlRm9udCAvSGVsdmV0aWNhCi9TdWJ0eXBlIC9UeXBlMQovRW5jb2RpbmcgL1dpbkFuc2lFbmNvZGluZwo+PgplbmRvYmoKMiAwIG9iago8PAovUHJvY1NldCBbL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSV0KL0ZvbnQgPDwKL0YxIDUgMCBSCj4+Ci9YT2JqZWN0IDw8Cj4+Cj4+CmVuZG9iago2IDAgb2JqCjw8Ci9Qcm9kdWNlciAoUHlGUERGIDEuNy4yIGh0dHA6Ly9weWZwZGYuZ29vZ2xlY29kZS5jb20vKQovQ3JlYXRpb25EYXRlIChEOjIwMjUwNjEzMTQ1NjE0KQo+PgplbmRvYmoKNyAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMSAwIFIKL09wZW5BY3Rpb24gWzMgMCBSIC9GaXRIIG51bGxdCi9QYWdlTGF5b3V0IC9PbmVDb2x1bW4KPj4KZW5kb2JqCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDMwOSAwMDAwMCBuIAowMDAwMDAwNDkyIDAwMDAwIG4gCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA4NyAwMDAwMCBuIAowMDAwMDAwMzk2IDAwMDAwIG4gCjAwMDAwMDA1OTYgMDAwMDAgbiAKMDAwMDAwMDcwNSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDgKL1Jvb3QgNyAwIFIKL0luZm8gNiAwIFIKPj4Kc3RhcnR4cmVmCjgwOAolJUVPRgo="
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Guardar CV Local": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Texto": {
+      "main": [
+        [
+          {
+            "node": "Mapear Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear Texto": {
+      "main": [
+        [
+          {
+            "node": "Analizar CV1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es PDF?1": {
+      "main": [
+        [
+          {
+            "node": "Guardar PDF1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar PDF1": {
+      "main": [
+        [
+          {
+            "node": "Guardar CV Local",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar CV1": {
+      "main": [
+        [
+          {
+            "node": "Responder Analisis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Analisis1": {
+      "main": [
+        [
+          {
+            "node": "Guardar Resumen1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Message": {
+      "main": [
+        [
+          {
+            "node": "¿Es PDF?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Extraer Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "696560d2-7259-4fdb-9c47-6d0d758c0951",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84f44db5bd3dc4edcdb8bb60547fbf0816264437984a9cbfa6a5c62fc72959da"
+  },
+  "id": "xJpuYRexazGYJR6L",
+  "tags": []
+}
