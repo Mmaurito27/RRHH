@@ -3,11 +3,12 @@
   "nodes": [
     {
       "parameters": {
-        "functionCode": "const fs = require('fs');\nconst buffer = Buffer.from($json.data_base64, 'base64');\nconst fileName = `${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(`/files/cv/${fileName}`, buffer);\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName,\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json,\n    saved_file: `/files/cv/${fileName}`\n  }\n}];"
+        "fileName": "=/files/cv/{{ $binary.data.fileName }}",
+        "dataPropertyName": "data"
       },
       "id": "6a5fee0a-b673-4902-8baf-f2b08d421752",
       "name": "Guardar CV Local",
-      "type": "n8n-nodes-base.function",
+      "type": "n8n-nodes-base.writeBinaryFile",
       "typeVersion": 1,
       "position": [
         -1460,
