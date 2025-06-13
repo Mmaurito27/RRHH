@@ -140,39 +140,6 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "gpt-4o-mini",
-          "mode": "list",
-          "cachedResultName": "GPT-4O-MINI"
-        },
-        "messages": {
-          "values": [
-            {
-              "content": "=Este es el contenido de un CV en PDF codificado en base64:\n\n[BASE64_ACÁ]\n\nPor favor, intentá interpretar lo que puedas y generá un resumen con los siguientes puntos:\n- Nombre del candidato\n- Experiencia laboral\n- Formación académica\n- Habilidades técnicas\n- Idiomas\n- Clasificación (junior/senior/técnico/pasante)\n- Palabras clave encontradas\n\nSi no podés procesar el contenido, respondé indicando que no se pudo leer correctamente.\n{{ $json.base64 }}\n\n"
-            }
-          ]
-        },
-        "jsonOutput": true,
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [
-        -800,
-        520
-      ],
-      "id": "bd0adf6b-dab4-4370-b008-f89ee59c363e",
-      "name": "OpenAI",
-      "credentials": {
-        "openAiApi": {
-          "id": "i90V6bSWkyq3eGpZ",
-          "name": "OpenAi account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "jsCode": "return items.map(item => {\n  const buffer = item.binary?.data?.data;\n  if (!buffer) {\n    throw new Error(\"No se encontró el archivo binario.\");\n  }\n\n  item.json.base64 = Buffer.from(buffer).toString('base64');\n  return item;\n});\n"
       },
       "type": "n8n-nodes-base.code",
@@ -183,6 +150,48 @@
       ],
       "id": "d4a4e9b5-acda-4069-8b7c-a5dbea41de96",
       "name": "Code"
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst dir = './files/cv';\nfs.mkdirSync(dir, { recursive: true });\nconst path = `${dir}/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;\nfs.writeFileSync(path, $json.data_base64, 'base64');\nreturn [item];"
+      },
+      "id": "c7c555fd-b15d-403a-896b-daae517fa70c",
+      "name": "Guardar CV Local",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3001/parse-pdf",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{ \"base64\": \"={{ $json.base64 }}\" }"
+      },
+      "id": "8d422669-09db-4a6e-872f-12e69b32314a",
+      "name": "Extraer Texto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "item.json.cv_text = item.json.text; return [item];"
+      },
+      "id": "885cce55-0774-4059-a475-53f99c5c7b0c",
+      "name": "Mapear Texto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -860,
+        240
+      ]
     }
   ],
   "pinData": {
@@ -222,7 +231,7 @@
       "main": [
         [
           {
-            "node": "Code",
+            "node": "Guardar CV Local",
             "type": "main",
             "index": 0
           }
@@ -277,14 +286,36 @@
       "main": [
         [
           {
-            "node": "OpenAI",
+            "node": "Extraer Texto",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI": {
+    "Guardar CV Local": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Texto": {
+      "main": [
+        [
+          {
+            "node": "Mapear Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear Texto": {
       "main": [
         [
           {
