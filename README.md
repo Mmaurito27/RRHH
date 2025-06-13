@@ -72,6 +72,16 @@ Para evitar errores, asegurate de armar el JSON del HTTP Request en n8n así:
 }
 ```
 
+Cuando se envíe un PDF al endpoint `parse-pdf`, usa una función previa para
+convertir el binario a base64:
+
+```javascript
+item.json.base64 = Buffer.from(item.binary.data.data).toString('base64');
+return item;
+```
+
+Esto garantiza que la cadena sea válida antes de hacer el POST.
+
 ## Estructura del payload enviado a n8n
 
 El archivo `index.js` envía al webhook un JSON con las siguientes propiedades cuando recibe un mensaje de texto:
@@ -143,3 +153,16 @@ Respuesta:
 ```
 
 Este servicio puede consumirse desde el flujo de n8n mediante una solicitud HTTP para obtener el texto antes de enviarlo a OpenAI.
+
+#### Prueba rápida con cURL
+
+1. Guarda un PDF de prueba en la carpeta `pdf-parser-api` con el nombre `sample.pdf`.
+2. Ejecuta el siguiente comando para codificarlo en base64 y enviarlo al API:
+
+```bash
+base64 sample.pdf | curl -X POST http://localhost:3001/parse-pdf \
+  -H "Content-Type: application/json" \
+  -d @- | jq
+```
+
+Deberías obtener un JSON con el texto extraído. Esto permite validar que el endpoint funciona correctamente sin necesidad de n8n.
