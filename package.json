@@ -8,6 +8,10 @@
     "start:pdf": "node pdf-parser-api/pdf-api.js",
     "start:n8n": "n8n start",
     "stack": "concurrently -k \"npm run start:bot\" \"npm run start:pdf\" \"npm run start:n8n\"",
+
+    "postinstall": "npm install --prefix pdf-parser-api",
+    "start:stack": "node stack.js",
+    "build:exe": "pkg stack.js --targets node18-win-x64 --output rrhh-stack.exe"
     "postinstall": "npm install --prefix pdf-parser-api"
   },
   "keywords": [],

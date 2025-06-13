@@ -24,9 +24,6 @@ node index.js
 5. Si configurás `INIT_PHONE` en `.env`, el bot enviará un mensaje de bienvenida a ese número cuando la sesión se inicie.
 6. Para iniciar el bot, la API de PDFs y n8n simultáneamente ejecutá:
 ```bash
-npm run stack
-```
-Esto asume que tenés `n8n` instalado de forma global o como dependencia del proyecto.
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
