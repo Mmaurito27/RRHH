@@ -1,0 +1,343 @@
+{
+  "name": "WSP RRHH",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isPDF }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "fbc8a872-a86f-49ec-9aee-480d854afb6a",
+      "name": "¿Es PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1480,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "d0541594-9a55-4522-a7b6-0957f58ddc59",
+      "name": "Responder Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -1240,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const buffer = Buffer.from($json.data_base64, 'base64');\n\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName: $json.filename || 'cv.pdf',\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json\n  }\n}];"
+      },
+      "id": "dbb5ad84-e305-4c83-9bf1-671f9cc14726",
+      "name": "Guardar PDF",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente CV en texto plano: {{ $json.cv_text }}\nGenera un resumen con nombre, experiencia laboral, formacion academica, habilidades tecnicas, idiomas, clasificacion (junior/senior/tecnico/pasante) y keywords."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c65af6e8-eec2-4882-83b6-d1ae19d5d8c4",
+      "name": "Analizar CV",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -880,
+        40
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "i90V6bSWkyq3eGpZ",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "635b4a90-1f17-4923-ac5c-c811674a173e",
+      "name": "Responder Analisis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst path = `/files/cv/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.json`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(path, JSON.stringify($json.message, null, 2));\nreturn [item];"
+      },
+      "id": "248552bb-1883-48ca-a610-4662bfac2982",
+      "name": "Guardar Resumen",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-in",
+        "options": {}
+      },
+      "id": "668379dd-ee2f-4651-adb4-fe5ad4974626",
+      "name": "Webhook1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1880,
+        280
+      ],
+      "webhookId": "e0b3341c-572b-4e82-b7ea-b91bbb60b502"
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $json;\nconst item = {\n  desde: msg.desde,\n  sender: msg.sender,\n  timestamp: msg.timestamp,\n};\nif (msg.filename && msg.mimetype) {\n  item.filename = msg.filename;\n  item.mimetype = msg.mimetype;\n  item.data_base64 = msg.data_base64;\n  item.isPDF = msg.mimetype === 'application/pdf';\n} else {\n  item.isPDF = false;\n}\nreturn [item];"
+      },
+      "id": "84736253-a7a8-49db-a2d5-872e632eb158",
+      "name": "Parse Message1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const buffer = item.binary?.data?.data;\n  if (!buffer) {\n    throw new Error(\"No se encontró el archivo binario.\");\n  }\n\n  item.json.base64 = Buffer.from(buffer).toString('base64');\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1100,
+        240
+      ],
+      "id": "d4a4e9b5-acda-4069-8b7c-a5dbea41de96",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst dir = './files/cv';\nfs.mkdirSync(dir, { recursive: true });\nconst path = `${dir}/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;\nfs.writeFileSync(path, $json.data_base64, 'base64');\nreturn [item];"
+      },
+      "id": "c7c555fd-b15d-403a-896b-daae517fa70c",
+      "name": "Guardar CV Local",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3001/parse-pdf",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{ \"base64\": \"={{ $json.base64 }}\" }"
+      },
+      "id": "8d422669-09db-4a6e-872f-12e69b32314a",
+      "name": "Extraer Texto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "item.json.cv_text = item.json.text; return [item];"
+      },
+      "id": "885cce55-0774-4059-a475-53f99c5c7b0c",
+      "name": "Mapear Texto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -860,
+        240
+      ]
+    }
+  ],
+  "pinData": {
+    "Webhook1": [
+      {
+        "json": {
+          "desde": "5491122334455@c.us",
+          "sender": "Lucía Martínez",
+          "timestamp": "2025-06-13T10:15:00.000Z",
+          "filename": "lucia-martinez-cv.pdf",
+          "mimetype": "application/pdf",
+          "data_base64": "JVBERi0xLjQKJ...(contenido base64 simulado del PDF)..."
+        }
+      }
+    ]
+  },
+  "connections": {
+    "¿Es PDF?": {
+      "main": [
+        [
+          {
+            "node": "Guardar PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar PDF": {
+      "main": [
+        [
+          {
+            "node": "Guardar CV Local",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar CV": {
+      "main": [
+        [
+          {
+            "node": "Responder Analisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Analisis": {
+      "main": [
+        [
+          {
+            "node": "Guardar Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Parse Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Message1": {
+      "main": [
+        [
+          {
+            "node": "¿Es PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Extraer Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar CV Local": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Texto": {
+      "main": [
+        [
+          {
+            "node": "Mapear Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapear Texto": {
+      "main": [
+        [
+          {
+            "node": "Analizar CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "06660c7a-f053-49b2-a9b8-bd7ec665edda",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "84f44db5bd3dc4edcdb8bb60547fbf0816264437984a9cbfa6a5c62fc72959da"
+  },
+  "id": "xJpuYRexazGYJR6L",
+  "tags": []
+}
