@@ -76,3 +76,17 @@ El archivo `index.js` envía al webhook un JSON con las siguientes propiedades c
 ```
 
 Si el mensaje incluye un CV en lugar de `message` se envían `filename`, `mimetype` y `data_base64` con el archivo en base64. En ambos casos se adjunta `context` con los últimos mensajes de la conversación.
+
+## Workflow especializado para CVs
+
+El archivo `wspautoresponse_cv.json` implementa un flujo dedicado exclusivamente a procesar CVs recibidos por WhatsApp. Su funcionamiento es el siguiente:
+
+1. Recibe el mensaje mediante el webhook `whatsapp-in`.
+2. Verifica que el adjunto sea un PDF válido. Si no lo es, responde con un mensaje de error.
+3. Guarda el archivo en `./files/cv/` con el nombre `<timestamp>_<remitente>.pdf`.
+4. Extrae el texto del PDF utilizando `pdf-parse`.
+5. Envía dicho texto a OpenAI para generar un resumen con nombre, experiencia, formación, habilidades, idiomas, clasificación y keywords.
+6. Devuelve la respuesta al remitente vía `/send-message`.
+7. Guarda el resumen generado en un archivo JSON para su posterior revisión.
+
+Este flujo elimina la antigua clasificación de mensajes (PEDIDO/CONSULTA/OTRO) y se centra únicamente en el análisis automático de CVs.
