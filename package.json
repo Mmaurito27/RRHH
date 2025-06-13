@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:bot": "node index.js",
+    "start:pdf": "node pdf-parser-api/pdf-api.js",
+    "start:n8n": "n8n start",
+    "stack": "concurrently -k \"npm run start:bot\" \"npm run start:pdf\" \"npm run start:n8n\"",
+    "postinstall": "npm install --prefix pdf-parser-api"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +21,7 @@
     "express": "^5.1.0",
     "google-spreadsheet": "^4.1.4",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.30.0"
+    "whatsapp-web.js": "^1.30.0",
+    "concurrently": "^8.2.0"
   }
 }

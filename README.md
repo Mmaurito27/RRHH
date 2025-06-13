@@ -22,6 +22,11 @@ node index.js
 3. Escaneá el código QR que aparecerá en consola para vincular WhatsApp Web.
 4. Asegurate de que n8n tenga un webhook público accesible en `N8N_WEBHOOK_URL`.
 5. Si configurás `INIT_PHONE` en `.env`, el bot enviará un mensaje de bienvenida a ese número cuando la sesión se inicie.
+6. Para iniciar el bot, la API de PDFs y n8n simultáneamente ejecutá:
+```bash
+npm run stack
+```
+Esto asume que tenés `n8n` instalado de forma global o como dependencia del proyecto.
 
 ## Google Sheets (opcional)
 Si proporcionás las variables `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY` y `GOOGLE_SHEET_ID`, cada mensaje o CV recibido se registrará en la hoja especificada.
@@ -90,3 +95,39 @@ El archivo `wspautoresponse_cv.json` implementa un flujo dedicado exclusivamente
 7. Guarda el resumen generado en un archivo JSON para su posterior revisión.
 
 Este flujo elimina la antigua clasificación de mensajes (PEDIDO/CONSULTA/OTRO) y se centra únicamente en el análisis automático de CVs.
+
+## API local para extraer texto de PDFs
+
+Para facilitar el análisis de CVs en n8n se incluyó una pequeña API independiente en `pdf-parser-api/`. Su propósito es recibir un PDF en base64 y devolver el texto extraído.
+
+### Uso
+
+```bash
+cd pdf-parser-api
+npm install
+node pdf-api.js
+```
+
+Esto levantará el servicio en `http://localhost:3001` y mostrará:
+
+```
+📄 PDF extractor API on http://localhost:3001
+```
+
+### Endpoint
+
+`POST /parse-pdf`
+
+Cuerpo JSON:
+
+```json
+{ "base64": "<contenido_base64_del_pdf>" }
+```
+
+Respuesta:
+
+```json
+{ "text": "Texto plano extraído del PDF" }
+```
+
+Este servicio puede consumirse desde el flujo de n8n mediante una solicitud HTTP para obtener el texto antes de enviarlo a OpenAI.
