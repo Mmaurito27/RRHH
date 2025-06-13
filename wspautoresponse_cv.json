@@ -1,0 +1,143 @@
+{
+  "name": "AI WhatsApp CV Auto Response",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp-in",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = $json;\nconst item = {\n  desde: msg.desde,\n  sender: msg.sender,\n  timestamp: msg.timestamp,\n};\nif (msg.filename && msg.mimetype) {\n  item.filename = msg.filename;\n  item.mimetype = msg.mimetype;\n  item.data_base64 = msg.data_base64;\n  item.isPDF = msg.mimetype === 'application/pdf';\n} else {\n  item.isPDF = false;\n}\nreturn [item];"
+      },
+      "id": "parse-node",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isPDF }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-pdf",
+      "name": "¿Es PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"El archivo recibido no es un CV en PDF.\"\n}"
+      },
+      "id": "error-response",
+      "name": "Responder Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [900, 150]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst path = `/files/cv/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(path, Buffer.from($json.data_base64, 'base64'));\nitem.file_path = path;\nreturn [item];"
+      },
+      "id": "save-pdf",
+      "name": "Guardar PDF",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst pdfParse = require('pdf-parse');\nconst data = fs.readFileSync($json.file_path);\nconst res = await pdfParse(data);\nitem.cv_text = res.text;\nreturn [item];"
+      },
+      "id": "pdf-text",
+      "name": "Extraer texto",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente CV en texto plano: {{ $json.cv_text }}\nGenera un resumen con nombre, experiencia laboral, formacion academica, habilidades tecnicas, idiomas, clasificacion (junior/senior/tecnico/pasante) y keywords."
+            }
+          ]
+        }
+      },
+      "id": "openai-summarize",
+      "name": "Analizar CV",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1300, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"{{ $json.message }}\"\n}"
+      },
+      "id": "send-response",
+      "name": "Responder Analisis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const fs = require('fs');\nconst path = `/files/cv/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.json`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(path, JSON.stringify($json.message, null, 2));\nreturn [item];"
+      },
+      "id": "save-summary",
+      "name": "Guardar Resumen",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1700, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Parse Message", "type": "main", "index": 0}]]},
+    "Parse Message": {"main": [[{"node": "¿Es PDF?", "type": "main", "index": 0}]]},
+    "¿Es PDF?": {
+      "main": [
+        [{"node": "Guardar PDF", "type": "main", "index": 0}],
+        [{"node": "Responder Error", "type": "main", "index": 0}]
+      ]
+    },
+    "Guardar PDF": {"main": [[{"node": "Extraer texto", "type": "main", "index": 0}]]},
+    "Extraer texto": {"main": [[{"node": "Analizar CV", "type": "main", "index": 0}]]},
+    "Analizar CV": {"main": [[{"node": "Responder Analisis", "type": "main", "index": 0}]]},
+    "Responder Analisis": {"main": [[{"node": "Guardar Resumen", "type": "main", "index": 0}]]}
+  }
+}
