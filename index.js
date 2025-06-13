@@ -57,6 +57,11 @@ const addToMemory = (id, direction, content, timestamp) => {
   saveMemory(memory);
 };
 
+const getContext = (id, limit = 5) => {
+  const history = memory[id] || [];
+  return history.slice(-limit);
+};
+
 
 console.log("🚀 Webhook configurado en:", process.env.N8N_WEBHOOK_URL);
 if (!process.env.N8N_WEBHOOK_URL) {
@@ -177,6 +182,7 @@ client.on('message', async (msg) => {
         if (media && esCV(media.mimetype)) {
           const payload = {
             ...baseData,
+            context: getContext(baseData.desde),
             filename: `cv_${senderName.replace(/[^a-zA-Z0-9]/g, '_')}.${media.mimetype.split('/')[1]}`,
             mimetype: media.mimetype,
             data_base64: media.data
@@ -209,6 +215,7 @@ client.on('message', async (msg) => {
       // Solo texto (sin media)
         const textPayload = {
           ...baseData,
+          context: getContext(baseData.desde),
           message: msg.body
         };
 
@@ -248,10 +255,12 @@ try {
   console.warn(`⚠️ No se pudo obtener contacto para ${body.from}`);
 }
 
+    const wid = normalizeWid(body.from);
     const payload = {
-      desde: normalizeWid(body.from),
+      desde: wid,
       sender: senderName,
       timestamp: Math.floor(Date.now() / 1000),
+      context: getContext(wid),
       message: body.body
     };
 

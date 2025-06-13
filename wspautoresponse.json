@@ -14,13 +14,45 @@
     },
     {
       "parameters": {
-        "functionCode": "const msg = $json;\nreturn [{\n  desde: msg.desde,\n  sender: msg.sender,\n  text: msg.message,\n  timestamp: msg.timestamp\n}];"
+        "functionCode": "const msg = $json;\nconst res = {\n  desde: msg.desde,\n  sender: msg.sender,\n  text: msg.message,\n  timestamp: msg.timestamp,\n  context: msg.context\n};\nif (msg.filename) {\n  res.filename = msg.filename;\n  res.mimetype = msg.mimetype;\n  res.data_base64 = msg.data_base64;\n  res.hasFile = true;\n} else {\n  res.hasFile = false;\n}\nreturn [res];"
       },
       "id": "parse-node",
       "name": "Parse Message",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasFile }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "cv-check",
+      "name": "¿Es CV?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/send-message",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"Recibimos tu CV ✅\"\n}"
+      },
+      "id": "cv-response-node",
+      "name": "Responder CV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [900, 150]
     },
     {
       "parameters": {
@@ -38,10 +70,10 @@
         }
       },
       "id": "openai-node",
-      "name": "OpenAI",
+      "name": "OpenAI Clasificación",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
-      "position": [700, 300],
+      "position": [900, 300],
       "credentials": {
         "openAiApi": {
           "id": "YOUR_CRED_ID",
@@ -70,7 +102,34 @@
       "name": "Clasificador IA",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
-      "position": [900, 300]
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente contexto: {{ JSON.stringify($json.context) }}\nResponde brevemente en español al PEDIDO: \"{{ $json.text }}\""
+            }
+          ]
+        }
+      },
+      "id": "openai-pedido",
+      "name": "Generar PEDIDO",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1300, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -78,13 +137,40 @@
         "method": "POST",
         "jsonParameters": true,
         "options": {},
-        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"Recibimos tu pedido 👌\"\n}"
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"{{ $json.message }}\"\n}"
       },
       "id": "pedido-node",
       "name": "Responder PEDIDO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [1100, 200]
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente contexto: {{ JSON.stringify($json.context) }}\nResponde brevemente en español a la CONSULTA: \"{{ $json.text }}\""
+            }
+          ]
+        }
+      },
+      "id": "openai-consulta",
+      "name": "Generar CONSULTA",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1300, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -92,13 +178,40 @@
         "method": "POST",
         "jsonParameters": true,
         "options": {},
-        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"Gracias por tu consulta, responderemos en breve 🙌\"\n}"
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"{{ $json.message }}\"\n}"
       },
       "id": "consulta-node",
       "name": "Responder CONSULTA",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [1100, 300]
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Con el siguiente contexto: {{ JSON.stringify($json.context) }}\nResponde brevemente en español al mensaje: \"{{ $json.text }}\""
+            }
+          ]
+        }
+      },
+      "id": "openai-otro",
+      "name": "Generar OTRO",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [1300, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -106,13 +219,13 @@
         "method": "POST",
         "jsonParameters": true,
         "options": {},
-        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"Gracias por tu mensaje 🧠. Lo recibimos correctamente.\"\n}"
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"{{ $json.message }}\"\n}"
       },
       "id": "otro-node",
       "name": "Responder OTRO",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
-      "position": [1100, 400]
+      "position": [1500, 400]
     }
   ],
   "connections": {
@@ -120,17 +233,32 @@
       "main": [[{ "node": "Parse Message", "type": "main", "index": 0 }]]
     },
     "Parse Message": {
-      "main": [[{ "node": "OpenAI", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "¿Es CV?", "type": "main", "index": 0 }]]
     },
-    "OpenAI": {
+    "¿Es CV?": {
+      "main": [
+        [{ "node": "Responder CV", "type": "main", "index": 0 }],
+        [{ "node": "OpenAI Clasificación", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Clasificación": {
       "main": [[{ "node": "Clasificador IA", "type": "main", "index": 0 }]]
     },
     "Clasificador IA": {
       "main": [
-        [{ "node": "Responder PEDIDO", "type": "main", "index": 0 }],
-        [{ "node": "Responder CONSULTA", "type": "main", "index": 0 }],
-        [{ "node": "Responder OTRO", "type": "main", "index": 0 }]
+        [{ "node": "Generar PEDIDO", "type": "main", "index": 0 }],
+        [{ "node": "Generar CONSULTA", "type": "main", "index": 0 }],
+        [{ "node": "Generar OTRO", "type": "main", "index": 0 }]
       ]
+    },
+    "Generar PEDIDO": {
+      "main": [[{ "node": "Responder PEDIDO", "type": "main", "index": 0 }]]
+    },
+    "Generar CONSULTA": {
+      "main": [[{ "node": "Responder CONSULTA", "type": "main", "index": 0 }]]
+    },
+    "Generar OTRO": {
+      "main": [[{ "node": "Responder OTRO", "type": "main", "index": 0 }]]
     }
   }
 }

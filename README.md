@@ -33,6 +33,15 @@ Cada entrada incluye si el mensaje fue entrante o saliente, el contenido y la
 marca de tiempo. Esto permite conservar el contexto aunque el proceso se
 reinicie.
 
+## Novedades del workflow
+
+El flujo de n8n se amplió para:
+
+1. Detectar CVs adjuntos y responder automáticamente con una confirmación.
+2. Generar respuestas personalizadas a cada mensaje usando OpenAI y el contexto previo.
+3. Registrar hasta los últimos cinco mensajes en la propiedad `context` para dar más coherencia a las respuestas.
+4. Añadir una ruta por defecto si la clasificación falla.
+
 ## Recomendaciones para n8n
 
 El endpoint `/send-message` validará que el campo `to` termine en `@c.us`. Si el número es inválido o está vacío, la API devolverá **400 Bad Request** antes de contactar a WhatsApp.
@@ -55,8 +64,15 @@ El archivo `index.js` envía al webhook un JSON con las siguientes propiedades c
   "desde": "1234567890@c.us",
   "sender": "Nombre del remitente",
   "timestamp": "2024-05-01T12:00:00.000Z",
+  "context": [
+    {
+      "direction": "incoming",
+      "content": "Mensaje previo",
+      "timestamp": "2024-05-01T11:59:00.000Z"
+    }
+  ],
   "message": "Contenido del mensaje"
 }
 ```
 
-Si el mensaje incluye un CV en lugar de `message` se envían `filename`, `mimetype` y `data_base64` con el archivo en base64.
+Si el mensaje incluye un CV en lugar de `message` se envían `filename`, `mimetype` y `data_base64` con el archivo en base64. En ambos casos se adjunta `context` con los últimos mensajes de la conversación.
