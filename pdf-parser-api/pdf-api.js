@@ -13,8 +13,8 @@ app.post('/parse-pdf', async (req, res) => {
   // Remove possible data URI prefix
   const cleanBase64 = base64.replace(/^data:.*;base64,/, '').trim();
 
-  // Basic base64 validation
-  if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+  // Basic base64 validation (allow optional whitespace)
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(cleanBase64)) {
     return res.status(400).json({ error: 'Invalid base64 data' });
   }
 
@@ -23,11 +23,16 @@ app.post('/parse-pdf', async (req, res) => {
     if (!buffer.length) {
       return res.status(400).json({ error: 'Empty PDF buffer' });
     }
+    // Quick header check to ensure it's a PDF
+    if (buffer.slice(0, 4).toString() !== '%PDF') {
+      return res.status(400).json({ error: 'Data is not a valid PDF file' });
+    }
+
     const data = await pdf(buffer);
     res.json({ text: data.text });
   } catch (err) {
     console.error('Error parsing PDF:', err.message);
-    res.status(500).json({ error: 'Failed to parse PDF' });
+    res.status(400).json({ error: 'Invalid or corrupted PDF file' });
   }
 });
 

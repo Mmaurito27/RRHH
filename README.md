@@ -166,3 +166,5 @@ base64 sample.pdf | curl -X POST http://localhost:3001/parse-pdf \
 ```
 
 Deberías obtener un JSON con el texto extraído. Esto permite validar que el endpoint funciona correctamente sin necesidad de n8n.
+
+> **Nota:** El servicio verifica que los primeros bytes del archivo correspondan a un PDF válido. Si envías una cadena base64 que no sea un PDF real o esté corrupto, obtendrás una respuesta **400** con un mensaje de error descriptivo.
