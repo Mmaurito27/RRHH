@@ -11,6 +11,21 @@ También detecta archivos adjuntos de CV en formato PDF o Word y los reenvía al
 ## Instalación
 ```bash
 PUPPETEER_SKIP_DOWNLOAD=1 npm install
+2. Asegurate de tener pkg instalado globalmente:
+
+npm install -g pkg
+3. Desde la raíz del proyecto, ejecutá:
+
+npm run build:exe
+Esto va a generar un archivo llamado:
+rrhh-stack.exe
+Que incluye el launcher stack.js, el cual a su vez inicia:
+
+el bot (index.js)
+
+la API PDF (pdf-parser-api/pdf-api.js)
+
+n8n (n8n start)
 ```
 
 ## Uso
