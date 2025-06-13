@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "functionCode": "const buffer = Buffer.from($json.data_base64, 'base64');\n\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName: `${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json\n  }\n}];"
+        "functionCode": "const fs = require('fs');\nconst buffer = Buffer.from($json.data_base64, 'base64');\nconst fileName = `${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(`/files/cv/${fileName}`, buffer);\nreturn [{\n  binary: {\n    data: {\n      data: buffer,\n      fileName,\n      mimeType: 'application/pdf'\n    }\n  },\n  json: {\n    ...$json,\n    saved_file: `/files/cv/${fileName}`\n  }\n}];"
       },
       "id": "6a5fee0a-b673-4902-8baf-f2b08d421752",
       "name": "Guardar CV Local",
@@ -70,7 +70,8 @@
       "parameters": {
         "url": "http://localhost:3000/send-message",
         "jsonParameters": true,
-        "options": {}
+        "options": {},
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"Solo se admiten archivos PDF.\"\n}"
       },
       "id": "d753e12c-9674-4f23-bfbe-7ca1992892da",
       "name": "Responder Error1",
@@ -105,7 +106,7 @@
         "messages": {
           "values": [
             {
-              "content": "=Con el siguiente CV en texto plano: {{ $json.cv_text }}\nGenera un resumen con nombre, experiencia laboral, formacion academica, habilidades tecnicas, idiomas, clasificacion (junior/senior/tecnico/pasante) y keywords."
+              "content": "=Contexto previo:\n{{ ($json.context || []).map(e => (e.direction === 'incoming' ? 'Usuario: ' : 'Bot: ') + e.content).join('\\n') }}\n\n{{ $json.instrucciones || '' }}\n\nCon el siguiente CV en texto plano: {{ $json.cv_text }}\nGenera un resumen con nombre, experiencia laboral, formacion academica, habilidades tecnicas, idiomas, clasificacion (junior/senior/tecnico/pasante) y keywords."
             }
           ]
         },
@@ -131,7 +132,8 @@
         "requestMethod": "POST",
         "url": "http://localhost:3000/send-message",
         "jsonParameters": true,
-        "options": {}
+        "options": {},
+        "bodyParametersJson": "={\n  \"to\": \"{{ $json.desde }}\",\n  \"text\": \"{{ $json.message }}\"\n}"
       },
       "id": "993be616-2d2a-4024-b340-f9b44b979642",
       "name": "Responder Analisis1",
@@ -144,7 +146,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const fs = require('fs');\nconst path = `/files/cv/${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}.json`;\nfs.mkdirSync('/files/cv', { recursive: true });\nfs.writeFileSync(path, JSON.stringify($json.message, null, 2));\nreturn [item];"
+        "functionCode": "const fs = require('fs');\nconst dir = '/files/cv';\nfs.mkdirSync(dir, { recursive: true });\nconst baseName = `${Date.now()}_${$json.sender.replace(/[^a-zA-Z0-9]/g,'_')}`;\nconst data = { cv_text: $json.cv_text, resumen: $json.message };\nfs.writeFileSync(`${dir}/${baseName}.json`, JSON.stringify(data, null, 2));\nreturn [item];"
       },
       "id": "ca590383-5f5a-48c8-8ccc-8c3f43768f47",
       "name": "Guardar Resumen1",
